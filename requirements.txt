@@ -1,0 +1,6 @@
+# Chatterbox itself should be installed separately.
+# See README.md for installation and PyTorch/CUDA notes.
+
+gradio
+numpy
+soundfile

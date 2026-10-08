@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE / editor
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Audio outputs and local voice references
+*.wav
+*.mp3
+*.flac
+*.ogg
+voices/
+reference_audio/
+
+# Gradio / caches / model downloads
+.gradio/
+.cache/
+huggingface/
+hf_cache/
+
+# Local environment / secrets
+.env
+.env.*
+*.local
+
+# Generated output names
+longform-turbo-output.wav
+longform-v3-output.wav

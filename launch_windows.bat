@@ -5,29 +5,29 @@ title Chatterbox Long-Form UI
 rem ------------------------------------------------------------
 rem Chatterbox Long-Form UI - Windows launcher
 rem
-rem Application directory:
-rem     C:\AI\chatterbox
-rem
-rem Virtual environment:
+rem By default this uses the existing Chatterbox virtual environment:
 rem     C:\AI\chatterbox\venv
+rem
+rem To use a different environment without editing this file, define:
+rem     CHATTERBOX_VENV=C:\path\to\venv
 rem ------------------------------------------------------------
 
-set "APP_DIR=C:\AI\chatterbox"
-set "VENV=%APP_DIR%\venv"
-
-if not exist "%APP_DIR%" (
-    echo.
-    echo ERROR: Application directory was not found:
-    echo     %APP_DIR%
-    echo.
-    pause
-    exit /b 1
+if not defined CHATTERBOX_VENV (
+    set "CHATTERBOX_VENV=C:\AI\chatterbox\venv"
 )
+
+set "VENV=%CHATTERBOX_VENV%"
+set "APP_DIR=%~dp0"
 
 if not exist "%VENV%\Scripts\activate.bat" (
     echo.
     echo ERROR: Chatterbox virtual environment was not found:
     echo     %VENV%
+    echo.
+    echo Either edit CHATTERBOX_VENV in this launcher or set it before
+    echo running the script, for example:
+    echo.
+    echo     set CHATTERBOX_VENV=C:\AI\chatterbox\venv
     echo.
     pause
     exit /b 1
@@ -43,11 +43,11 @@ echo ============================================================
 echo               Chatterbox Long-Form UI
 echo ============================================================
 echo.
-echo Application folder:
-echo   %APP_DIR%
-echo.
 echo Virtual environment:
 echo   %VENV%
+echo.
+echo Application folder:
+echo   %APP_DIR%
 echo.
 echo   [1] Launch Chatterbox Turbo Long-Form UI
 echo   [2] Launch Chatterbox Multilingual V3 Long-Form UI
@@ -65,7 +65,7 @@ if errorlevel 1 goto turbo
 cls
 echo Starting Chatterbox Turbo Long-Form UI...
 echo.
-python "%APP_DIR%\longform_turbo_gui.py"
+python "%APP_DIR%longform_turbo_gui.py"
 echo.
 echo Chatterbox Turbo has closed.
 pause
@@ -75,7 +75,7 @@ goto menu
 cls
 echo Starting Chatterbox Multilingual V3 Long-Form UI...
 echo.
-python "%APP_DIR%\longform_v3_gui.py"
+python "%APP_DIR%longform_v3_gui.py"
 echo.
 echo Chatterbox Multilingual V3 has closed.
 pause

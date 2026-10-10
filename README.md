@@ -17,13 +17,13 @@ This repository contains two standalone front ends:
 
 ![Turbo overview](docs/images/turbo-overview.png)
 
-### Long-form chunking and repeated paragraph pauses
-
-![Turbo long-form chunking](docs/images/turbo-longform-chunking.png)
-
 ### Chatterbox Multilingual V3 overview
 
 ![V3 overview](docs/images/v3-overview.png)
+
+### Long-form chunking with text colouring and paragraph pauses
+
+![Turbo long-form chunking](docs/images/turbo-longform-chunking.png)
 
 ## Features
 

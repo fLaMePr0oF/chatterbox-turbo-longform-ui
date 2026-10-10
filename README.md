@@ -1,15 +1,29 @@
 # Chatterbox Long-Form UI
 
-A Gradio front end for **Resemble AI Chatterbox** that adds practical long-form narration workflows on top of Chatterbox Turbo and Multilingual V3.
+A Gradio front end for **Resemble AI Chatterbox** that adds practical long-form narration workflows on top of **Chatterbox Turbo** and **Chatterbox Multilingual V3**.
 
 This repository contains two standalone front ends:
 
 - `longform_turbo_gui.py` — Chatterbox Turbo long-form narrator
 - `longform_v3_gui.py` — Chatterbox Multilingual V3 long-form narrator
 
-## Demo and screenshots
+## Demo
 
-The Turbo demo and screenshots are available in the [media assets package](https://github.com/fLaMePr0oF/chatterbox-turbo-longform-ui). Once uploaded to `docs/images/`, they can be embedded here.
+![Turbo demo](docs/images/turbo-demo.gif)
+
+## Screenshots
+
+### Chatterbox Turbo overview
+
+![Turbo overview](docs/images/turbo-overview.png)
+
+### Long-form chunking and repeated paragraph pauses
+
+![Turbo long-form chunking](docs/images/turbo-longform-chunking.png)
+
+### Chatterbox Multilingual V3 overview
+
+![V3 overview](docs/images/v3-overview.png)
 
 ## Features
 

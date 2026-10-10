@@ -7,6 +7,10 @@ This repository contains two standalone front ends:
 - `longform_turbo_gui.py` — Chatterbox Turbo long-form narrator
 - `longform_v3_gui.py` — Chatterbox Multilingual V3 long-form narrator
 
+## Demo and screenshots
+
+The Turbo demo and screenshots are available in the [media assets package](https://github.com/fLaMePr0oF/chatterbox-turbo-longform-ui). Once uploaded to `docs/images/`, they can be embedded here.
+
 ## Features
 
 ### Shared long-form features

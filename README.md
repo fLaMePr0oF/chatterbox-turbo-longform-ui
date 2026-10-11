@@ -87,6 +87,8 @@ pip install -r requirements.txt
 
 The correct PyTorch build depends on your GPU and CUDA environment. Newer NVIDIA GPUs may require a newer CUDA-enabled PyTorch build than the version selected by Chatterbox's default dependency pins. If Chatterbox installs a CPU-only or incompatible build, install the appropriate PyTorch / TorchAudio / TorchVision packages from the official PyTorch index for your system.
 
+## Running
+
 ### Windows launcher
 
 On Windows, the included `launch_windows.bat` provides a simple menu for launching either front end or opening an activated Chatterbox command prompt.

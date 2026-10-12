@@ -17,13 +17,13 @@ This repository contains two standalone front ends:
 
 ![Turbo overview](docs/images/turbo-overview.png)
 
-### Long-form chunking and repeated paragraph pauses
-
-![Turbo long-form chunking](docs/images/turbo-longform-chunking.png)
-
 ### Chatterbox Multilingual V3 overview
 
 ![V3 overview](docs/images/v3-overview.png)
+
+### Long-form chunking with text colouring and paragraph pauses
+
+![Turbo long-form chunking](docs/images/turbo-longform-chunking.png)
 
 ## Features
 
@@ -88,6 +88,26 @@ pip install -r requirements.txt
 The correct PyTorch build depends on your GPU and CUDA environment. Newer NVIDIA GPUs may require a newer CUDA-enabled PyTorch build than the version selected by Chatterbox's default dependency pins. If Chatterbox installs a CPU-only or incompatible build, install the appropriate PyTorch / TorchAudio / TorchVision packages from the official PyTorch index for your system.
 
 ## Running
+
+### Windows launcher
+
+On Windows, the included `launch_windows.bat` provides a simple menu for launching either front end or opening an activated Chatterbox command prompt.
+
+The launcher assumes the Turbo and Multilingual V3 app files are in the same directory as the batch file, and uses the existing Chatterbox virtual environment at:
+
+```text
+C:\AI\chatterbox\venv
+```
+
+Run:
+
+```text
+launch_windows.bat
+```
+
+and choose either the Turbo or Multilingual V3 front end from the menu.
+
+### Manual launch
 
 Turbo:
 

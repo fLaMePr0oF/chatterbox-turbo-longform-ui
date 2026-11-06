@@ -2033,68 +2033,71 @@ with gr.Blocks(
 """
                     )
 
-                    voice_1_audio = gr.Audio(
-                        sources=[
-                            "upload",
-                            "microphone"
-                        ],
-                        type="filepath",
-                        label=(
-                            "Voice 1 reference sample "
-                            "(required)"
-                        )
-                    )
+                    with gr.Row():
+                        with gr.Column(scale=2):
+                            voice_1_audio = gr.Audio(
+                                sources=[
+                                    "upload",
+                                    "microphone"
+                                ],
+                                type="filepath",
+                                label=(
+                                    "Voice 1 reference sample "
+                                    "(required)"
+                                )
+                            )
 
-                    with gr.Accordion(
-                        "Voice 1 parameters",
-                        open=False
-                    ):
-                        voice_1_temperature = gr.Slider(
-                            minimum=0.05,
-                            maximum=2.0,
-                            value=0.8,
-                            step=0.05,
-                            label="Temperature",
-                            interactive=True
-                        )
+                        with gr.Column(scale=1):
+                            with gr.Accordion(
+                                "Turbo Voice Settings",
+                                open=True
+                            ):
+                                voice_1_temperature = gr.Slider(
+                                    minimum=0.05,
+                                    maximum=2.0,
+                                    value=0.8,
+                                    step=0.05,
+                                    label="Temperature",
+                                    interactive=True
+                                )
 
-                        voice_1_top_p = gr.Slider(
-                            minimum=0.0,
-                            maximum=1.0,
-                            value=0.95,
-                            step=0.01,
-                            label="Top P",
-                            interactive=True
-                        )
+                                voice_1_top_p = gr.Slider(
+                                    minimum=0.0,
+                                    maximum=1.0,
+                                    value=0.95,
+                                    step=0.01,
+                                    label="Top P",
+                                    interactive=True
+                                )
 
-                        voice_1_top_k = gr.Slider(
-                            minimum=0,
-                            maximum=1000,
-                            value=1000,
-                            step=10,
-                            label="Top K",
-                            interactive=True
-                        )
+                                voice_1_top_k = gr.Slider(
+                                    minimum=0,
+                                    maximum=1000,
+                                    value=1000,
+                                    step=10,
+                                    label="Top K",
+                                    interactive=True
+                                )
 
-                        voice_1_repetition_penalty = gr.Slider(
-                            minimum=1.0,
-                            maximum=2.0,
-                            value=1.2,
-                            step=0.05,
-                            label=(
-                                "Repetition Penalty"
-                            ),
-                            interactive=True
-                        )
+                                voice_1_repetition_penalty = gr.Slider(
+                                    minimum=1.0,
+                                    maximum=2.0,
+                                    value=1.2,
+                                    step=0.05,
+                                    label=(
+                                        "Repetition Penalty"
+                                    ),
+                                    interactive=True
+                                )
 
-                        voice_1_norm_loudness = gr.Checkbox(
-                            value=True,
-                            label=(
-                                "Normalize reference "
-                                "loudness (-27 LUFS)"
-                            ),
-                            interactive=True
-                        )
+                                voice_1_norm_loudness = gr.Checkbox(
+                                    value=True,
+                                    label=(
+                                        "Normalize reference "
+                                        "loudness (-27 LUFS)"
+                                    ),
+                                    interactive=True
+                                )
 
                 with gr.Group(
                     visible=False,
@@ -2110,68 +2113,71 @@ with gr.Blocks(
 """
                     )
 
-                    voice_2_audio = gr.Audio(
-                        sources=[
-                            "upload",
-                            "microphone"
-                        ],
-                        type="filepath",
-                        label=(
-                            "Voice 2 reference sample "
-                            "(required)"
-                        )
-                    )
+                    with gr.Row():
+                        with gr.Column(scale=2):
+                            voice_2_audio = gr.Audio(
+                                sources=[
+                                    "upload",
+                                    "microphone"
+                                ],
+                                type="filepath",
+                                label=(
+                                    "Voice 2 reference sample "
+                                    "(required)"
+                                )
+                            )
 
-                    with gr.Accordion(
-                        "Voice 2 parameters",
-                        open=False
-                    ):
-                        voice_2_temperature = gr.Slider(
-                            minimum=0.05,
-                            maximum=2.0,
-                            value=0.8,
-                            step=0.05,
-                            label="Temperature",
-                            interactive=True
-                        )
+                        with gr.Column(scale=1):
+                            with gr.Accordion(
+                                "Turbo Voice Settings",
+                                open=True
+                            ):
+                                voice_2_temperature = gr.Slider(
+                                    minimum=0.05,
+                                    maximum=2.0,
+                                    value=0.8,
+                                    step=0.05,
+                                    label="Temperature",
+                                    interactive=True
+                                )
 
-                        voice_2_top_p = gr.Slider(
-                            minimum=0.0,
-                            maximum=1.0,
-                            value=0.95,
-                            step=0.01,
-                            label="Top P",
-                            interactive=True
-                        )
+                                voice_2_top_p = gr.Slider(
+                                    minimum=0.0,
+                                    maximum=1.0,
+                                    value=0.95,
+                                    step=0.01,
+                                    label="Top P",
+                                    interactive=True
+                                )
 
-                        voice_2_top_k = gr.Slider(
-                            minimum=0,
-                            maximum=1000,
-                            value=1000,
-                            step=10,
-                            label="Top K",
-                            interactive=True
-                        )
+                                voice_2_top_k = gr.Slider(
+                                    minimum=0,
+                                    maximum=1000,
+                                    value=1000,
+                                    step=10,
+                                    label="Top K",
+                                    interactive=True
+                                )
 
-                        voice_2_repetition_penalty = gr.Slider(
-                            minimum=1.0,
-                            maximum=2.0,
-                            value=1.2,
-                            step=0.05,
-                            label=(
-                                "Repetition Penalty"
-                            ),
-                            interactive=True
-                        )
+                                voice_2_repetition_penalty = gr.Slider(
+                                    minimum=1.0,
+                                    maximum=2.0,
+                                    value=1.2,
+                                    step=0.05,
+                                    label=(
+                                        "Repetition Penalty"
+                                    ),
+                                    interactive=True
+                                )
 
-                        voice_2_norm_loudness = gr.Checkbox(
-                            value=True,
-                            label=(
-                                "Normalize reference "
-                                "loudness (-27 LUFS)"
-                            ),
-                            interactive=True
-                        )
+                                voice_2_norm_loudness = gr.Checkbox(
+                                    value=True,
+                                    label=(
+                                        "Normalize reference "
+                                        "loudness (-27 LUFS)"
+                                    ),
+                                    interactive=True
+                                )
 
                 with gr.Group(
                     visible=False,
@@ -2187,68 +2193,71 @@ with gr.Blocks(
 """
                     )
 
-                    voice_3_audio = gr.Audio(
-                        sources=[
-                            "upload",
-                            "microphone"
-                        ],
-                        type="filepath",
-                        label=(
-                            "Voice 3 reference sample "
-                            "(required)"
-                        )
-                    )
+                    with gr.Row():
+                        with gr.Column(scale=2):
+                            voice_3_audio = gr.Audio(
+                                sources=[
+                                    "upload",
+                                    "microphone"
+                                ],
+                                type="filepath",
+                                label=(
+                                    "Voice 3 reference sample "
+                                    "(required)"
+                                )
+                            )
 
-                    with gr.Accordion(
-                        "Voice 3 parameters",
-                        open=False
-                    ):
-                        voice_3_temperature = gr.Slider(
-                            minimum=0.05,
-                            maximum=2.0,
-                            value=0.8,
-                            step=0.05,
-                            label="Temperature",
-                            interactive=True
-                        )
+                        with gr.Column(scale=1):
+                            with gr.Accordion(
+                                "Turbo Voice Settings",
+                                open=True
+                            ):
+                                voice_3_temperature = gr.Slider(
+                                    minimum=0.05,
+                                    maximum=2.0,
+                                    value=0.8,
+                                    step=0.05,
+                                    label="Temperature",
+                                    interactive=True
+                                )
 
-                        voice_3_top_p = gr.Slider(
-                            minimum=0.0,
-                            maximum=1.0,
-                            value=0.95,
-                            step=0.01,
-                            label="Top P",
-                            interactive=True
-                        )
+                                voice_3_top_p = gr.Slider(
+                                    minimum=0.0,
+                                    maximum=1.0,
+                                    value=0.95,
+                                    step=0.01,
+                                    label="Top P",
+                                    interactive=True
+                                )
 
-                        voice_3_top_k = gr.Slider(
-                            minimum=0,
-                            maximum=1000,
-                            value=1000,
-                            step=10,
-                            label="Top K",
-                            interactive=True
-                        )
+                                voice_3_top_k = gr.Slider(
+                                    minimum=0,
+                                    maximum=1000,
+                                    value=1000,
+                                    step=10,
+                                    label="Top K",
+                                    interactive=True
+                                )
 
-                        voice_3_repetition_penalty = gr.Slider(
-                            minimum=1.0,
-                            maximum=2.0,
-                            value=1.2,
-                            step=0.05,
-                            label=(
-                                "Repetition Penalty"
-                            ),
-                            interactive=True
-                        )
+                                voice_3_repetition_penalty = gr.Slider(
+                                    minimum=1.0,
+                                    maximum=2.0,
+                                    value=1.2,
+                                    step=0.05,
+                                    label=(
+                                        "Repetition Penalty"
+                                    ),
+                                    interactive=True
+                                )
 
-                        voice_3_norm_loudness = gr.Checkbox(
-                            value=True,
-                            label=(
-                                "Normalize reference "
-                                "loudness (-27 LUFS)"
-                            ),
-                            interactive=True
-                        )
+                                voice_3_norm_loudness = gr.Checkbox(
+                                    value=True,
+                                    label=(
+                                        "Normalize reference "
+                                        "loudness (-27 LUFS)"
+                                    ),
+                                    interactive=True
+                                )
 
                 with gr.Group(
                     visible=False,
@@ -2264,68 +2273,71 @@ with gr.Blocks(
 """
                     )
 
-                    voice_4_audio = gr.Audio(
-                        sources=[
-                            "upload",
-                            "microphone"
-                        ],
-                        type="filepath",
-                        label=(
-                            "Voice 4 reference sample "
-                            "(required)"
-                        )
-                    )
+                    with gr.Row():
+                        with gr.Column(scale=2):
+                            voice_4_audio = gr.Audio(
+                                sources=[
+                                    "upload",
+                                    "microphone"
+                                ],
+                                type="filepath",
+                                label=(
+                                    "Voice 4 reference sample "
+                                    "(required)"
+                                )
+                            )
 
-                    with gr.Accordion(
-                        "Voice 4 parameters",
-                        open=False
-                    ):
-                        voice_4_temperature = gr.Slider(
-                            minimum=0.05,
-                            maximum=2.0,
-                            value=0.8,
-                            step=0.05,
-                            label="Temperature",
-                            interactive=True
-                        )
+                        with gr.Column(scale=1):
+                            with gr.Accordion(
+                                "Turbo Voice Settings",
+                                open=True
+                            ):
+                                voice_4_temperature = gr.Slider(
+                                    minimum=0.05,
+                                    maximum=2.0,
+                                    value=0.8,
+                                    step=0.05,
+                                    label="Temperature",
+                                    interactive=True
+                                )
 
-                        voice_4_top_p = gr.Slider(
-                            minimum=0.0,
-                            maximum=1.0,
-                            value=0.95,
-                            step=0.01,
-                            label="Top P",
-                            interactive=True
-                        )
+                                voice_4_top_p = gr.Slider(
+                                    minimum=0.0,
+                                    maximum=1.0,
+                                    value=0.95,
+                                    step=0.01,
+                                    label="Top P",
+                                    interactive=True
+                                )
 
-                        voice_4_top_k = gr.Slider(
-                            minimum=0,
-                            maximum=1000,
-                            value=1000,
-                            step=10,
-                            label="Top K",
-                            interactive=True
-                        )
+                                voice_4_top_k = gr.Slider(
+                                    minimum=0,
+                                    maximum=1000,
+                                    value=1000,
+                                    step=10,
+                                    label="Top K",
+                                    interactive=True
+                                )
 
-                        voice_4_repetition_penalty = gr.Slider(
-                            minimum=1.0,
-                            maximum=2.0,
-                            value=1.2,
-                            step=0.05,
-                            label=(
-                                "Repetition Penalty"
-                            ),
-                            interactive=True
-                        )
+                                voice_4_repetition_penalty = gr.Slider(
+                                    minimum=1.0,
+                                    maximum=2.0,
+                                    value=1.2,
+                                    step=0.05,
+                                    label=(
+                                        "Repetition Penalty"
+                                    ),
+                                    interactive=True
+                                )
 
-                        voice_4_norm_loudness = gr.Checkbox(
-                            value=True,
-                            label=(
-                                "Normalize reference "
-                                "loudness (-27 LUFS)"
-                            ),
-                            interactive=True
-                        )
+                                voice_4_norm_loudness = gr.Checkbox(
+                                    value=True,
+                                    label=(
+                                        "Normalize reference "
+                                        "loudness (-27 LUFS)"
+                                    ),
+                                    interactive=True
+                                )
 
                 gr.HTML(
                     """

@@ -17,6 +17,16 @@ logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
+APP_VERSION = "5.0"
+
+VOICE_PREFIX_PATTERN = re.compile(
+    r"^\{([1-4])\}"
+)
+
+ANY_BRACED_PREFIX_PATTERN = re.compile(
+    r"^\{([^}]+)\}"
+)
+
 EVENT_TAGS = [
     "[clear throat]",
     "[sigh]",
@@ -216,6 +226,73 @@ EDITOR_CSS = """
 .soundboard-title {
     margin-top: 14px !important;
 }
+
+#narration-editor.editor-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+    cursor: not-allowed;
+    border-color: #444;
+    background: #202023;
+}
+
+.podcast-controls {
+    align-items: end !important;
+    margin-bottom: 12px !important;
+}
+
+#podcast-mode-switch input[type="checkbox"] {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 44px !important;
+    height: 24px !important;
+    border-radius: 999px !important;
+    background: #52525b !important;
+    border: 1px solid #71717a !important;
+    cursor: pointer !important;
+    position: relative !important;
+    transition: background 0.15s ease !important;
+}
+
+#podcast-mode-switch input[type="checkbox"]::after {
+    content: "" !important;
+    position: absolute !important;
+    width: 18px !important;
+    height: 18px !important;
+    top: 2px !important;
+    left: 2px !important;
+    border-radius: 50% !important;
+    background: white !important;
+    transition: transform 0.15s ease !important;
+}
+
+#podcast-mode-switch input[type="checkbox"]:checked {
+    background: #4f46e5 !important;
+}
+
+#podcast-mode-switch input[type="checkbox"]:checked::after {
+    transform: translateX(20px) !important;
+}
+
+.voice-panel {
+    border: 1px solid #4b5563 !important;
+    border-radius: 9px !important;
+    background: #202024 !important;
+    padding: 12px 14px !important;
+    margin: 8px 0 10px 0 !important;
+}
+
+.voice-panel-title {
+    margin: 0 0 8px 0 !important;
+    font-size: 17px !important;
+    font-weight: 650 !important;
+    color: white !important;
+}
+
+.podcast-status {
+    margin: 4px 0 10px 0 !important;
+    color: #c7c7d1 !important;
+    font-size: 13px !important;
+}
 """
 
 
@@ -257,6 +334,78 @@ function effectiveLength(text) {
     }
 
     return length;
+}
+
+
+function stripVoicePrefix(paragraph) {
+    return paragraph.replace(
+        /^\{[1-4]\}\s*/,
+        ""
+    );
+}
+
+
+function scriptEffectiveLength(text) {
+    const paragraphs = text.split("\n");
+
+    let total = 0;
+
+    paragraphs.forEach(
+        (paragraph, index) => {
+            total += effectiveLength(
+                stripVoicePrefix(paragraph)
+            );
+
+            if (index < paragraphs.length - 1) {
+                total += 1;
+            }
+        }
+    );
+
+    return total;
+}
+
+
+function setNarrationEditorEnabled(enabled) {
+    const editor = document.querySelector(
+        "#narration-editor"
+    );
+
+    if (!editor) {
+        return;
+    }
+
+    if (enabled) {
+        editor.setAttribute(
+            "contenteditable",
+            "plaintext-only"
+        );
+
+        editor.classList.remove(
+            "editor-disabled"
+        );
+
+        editor.setAttribute(
+            "aria-disabled",
+            "false"
+        );
+    } else {
+        editor.setAttribute(
+            "contenteditable",
+            "false"
+        );
+
+        editor.classList.add(
+            "editor-disabled"
+        );
+
+        editor.setAttribute(
+            "aria-disabled",
+            "true"
+        );
+
+        editor.blur();
+    }
 }
 
 
@@ -365,7 +514,7 @@ function updateStatus(text, limit, overLimitCount) {
         ).length
         : 0;
 
-    const effectiveCharacters = effectiveLength(
+    const effectiveCharacters = scriptEffectiveLength(
         text
     );
 
@@ -433,7 +582,11 @@ function updateHighlight() {
         const start = offset;
         const end = start + paragraph.length;
 
-        if (effectiveLength(paragraph) > limit) {
+        if (
+            effectiveLength(
+                stripVoicePrefix(paragraph)
+            ) > limit
+        ) {
             targets.push({
                 start: start,
                 end: end
@@ -661,6 +814,8 @@ function installNarrationEditor() {
 
     editor.dataset.installed = "true";
 
+    setNarrationEditorEnabled(true);
+
     /*
     Native typing, backspace, delete and cursor movement
     are left alone. Only Enter is normalised to one line break.
@@ -877,6 +1032,235 @@ def split_text(text, max_chars=260):
     return chunks
 
 
+def parse_podcast_voice(paragraph, voice_count, paragraph_number):
+    """
+    Return:
+        (voice_id, spoken_paragraph)
+
+    A valid voice marker must be the first three characters:
+        {1} ... {4}
+
+    If no marker is present, Voice 1 is used.
+    """
+
+    marker = ANY_BRACED_PREFIX_PATTERN.match(
+        paragraph
+    )
+
+    if marker:
+        valid_marker = VOICE_PREFIX_PATTERN.match(
+            paragraph
+        )
+
+        if not valid_marker:
+            raise gr.Error(
+                f"Paragraph {paragraph_number} starts with "
+                f"an invalid voice marker '{marker.group(0)}'. "
+                "Use {1}, {2}, {3}, or {4}."
+            )
+
+        voice_id = int(
+            valid_marker.group(1)
+        )
+
+        if voice_id > voice_count:
+            raise gr.Error(
+                f"Paragraph {paragraph_number} is assigned to "
+                f"Voice {voice_id}, but Podcast mode is configured "
+                f"for only {voice_count} voice(s)."
+            )
+
+        spoken_paragraph = paragraph[
+            valid_marker.end():
+        ].lstrip()
+
+        if not spoken_paragraph:
+            raise gr.Error(
+                f"Paragraph {paragraph_number} contains "
+                f"{{{voice_id}}} but no text."
+            )
+
+        return (
+            voice_id,
+            spoken_paragraph
+        )
+
+    return (
+        1,
+        paragraph
+    )
+
+
+def split_podcast_text(
+    text,
+    max_chars,
+    voice_count
+):
+    """
+    Split Podcast-mode text while retaining the voice assigned
+    to each paragraph.
+
+    Returns tuples:
+        (
+            chunk_text,
+            paragraph_breaks_after,
+            voice_id
+        )
+
+    Untagged paragraphs default to Voice 1.
+    """
+
+    text = re.sub(
+        r"\r\n?",
+        "\n",
+        text
+    )
+
+    if not text.strip():
+        return []
+
+    text = text.strip()
+
+    sections = re.split(
+        r"(\n+)",
+        text
+    )
+
+    chunks = []
+    paragraph_number = 0
+
+    for section_index in range(
+        0,
+        len(sections),
+        2
+    ):
+        paragraph = (
+            sections[section_index]
+            .strip()
+        )
+
+        if not paragraph:
+            continue
+
+        paragraph_number += 1
+
+        voice_id, spoken_paragraph = (
+            parse_podcast_voice(
+                paragraph,
+                voice_count,
+                paragraph_number
+            )
+        )
+
+        newline_count = 0
+
+        if section_index + 1 < len(sections):
+            newline_count = len(
+                sections[
+                    section_index + 1
+                ]
+            )
+
+        sentences = re.split(
+            r'(?<=[.!?])\s+(?=[A-Z0-9"“‘\(])',
+            spoken_paragraph
+        )
+
+        paragraph_chunks = []
+        current = ""
+
+        for sentence in sentences:
+            sentence = sentence.strip()
+
+            if not sentence:
+                continue
+
+            if (
+                effective_length(sentence)
+                > max_chars
+            ):
+                if current:
+                    paragraph_chunks.append(
+                        current.strip()
+                    )
+                    current = ""
+
+                paragraph_chunks.extend(
+                    split_long_sentence(
+                        sentence,
+                        max_chars
+                    )
+                )
+
+                continue
+
+            candidate = (
+                sentence
+                if not current
+                else current + " " + sentence
+            )
+
+            if (
+                effective_length(candidate)
+                <= max_chars
+            ):
+                current = candidate
+            else:
+                if current:
+                    paragraph_chunks.append(
+                        current.strip()
+                    )
+
+                current = sentence
+
+        if current:
+            paragraph_chunks.append(
+                current.strip()
+            )
+
+        for index, part in enumerate(
+            paragraph_chunks
+        ):
+            is_last_in_paragraph = (
+                index
+                == len(paragraph_chunks) - 1
+            )
+
+            breaks_after = (
+                newline_count
+                if is_last_in_paragraph
+                else 0
+            )
+
+            chunks.append(
+                (
+                    part,
+                    breaks_after,
+                    voice_id
+                )
+            )
+
+    return chunks
+
+
+def build_voice_config(
+    audio_path,
+    temperature,
+    top_p,
+    top_k,
+    repetition_penalty,
+    norm_loudness
+):
+    return {
+        "audio_path": audio_path,
+        "temperature": temperature,
+        "top_p": top_p,
+        "top_k": int(top_k),
+        "repetition_penalty": repetition_penalty,
+        "norm_loudness": norm_loudness,
+    }
+
+
 # ------------------------------------------------------------
 # Load Chatterbox Turbo
 # ------------------------------------------------------------
@@ -906,6 +1290,8 @@ MODEL = load_model()
 
 def generate_longform(
     text,
+    podcast_mode,
+    voice_count,
     audio_prompt_path,
     sentence_pause_ms,
     paragraph_pause_ms,
@@ -916,17 +1302,35 @@ def generate_longform(
     repetition_penalty,
     norm_loudness,
     seed_num,
+    voice_1_audio,
+    voice_1_temperature,
+    voice_1_top_p,
+    voice_1_top_k,
+    voice_1_repetition_penalty,
+    voice_1_norm_loudness,
+    voice_2_audio,
+    voice_2_temperature,
+    voice_2_top_p,
+    voice_2_top_k,
+    voice_2_repetition_penalty,
+    voice_2_norm_loudness,
+    voice_3_audio,
+    voice_3_temperature,
+    voice_3_top_p,
+    voice_3_top_k,
+    voice_3_repetition_penalty,
+    voice_3_norm_loudness,
+    voice_4_audio,
+    voice_4_temperature,
+    voice_4_top_p,
+    voice_4_top_k,
+    voice_4_repetition_penalty,
+    voice_4_norm_loudness,
     progress=gr.Progress()
 ):
     if not text or not text.strip():
         raise gr.Error(
             "Please enter some text."
-        )
-
-    if not audio_prompt_path:
-        raise gr.Error(
-            "Chatterbox Turbo requires a reference voice. "
-            "Please upload or record a reference clip."
         )
 
     if DEVICE != "cuda":
@@ -935,17 +1339,9 @@ def generate_longform(
             "Generation will run on CPU."
         )
 
-    chunk_size = int(chunk_size)
-
-    chunks = split_text(
-        text,
-        max_chars=chunk_size
+    chunk_size = int(
+        chunk_size
     )
-
-    if not chunks:
-        raise gr.Error(
-            "No text chunks were created."
-        )
 
     used_seed = set_seed(
         int(seed_num)
@@ -985,85 +1381,389 @@ def generate_longform(
 
     generated_parts = []
 
-    print()
-    print(
-        f"Generating {len(chunks)} chunks..."
-    )
-    print()
-
-    for index, (
-        chunk,
-        paragraph_breaks_after
-    ) in enumerate(chunks):
-
-        progress(
-            (index + 1) / len(chunks),            desc=(
-                f"Generating section "
-                f"{index + 1} "
-                f"of {len(chunks)}"
+    if podcast_mode:
+        if not voice_count:
+            raise gr.Error(
+                "Select the number of Podcast voices."
             )
+
+        voice_count = int(
+            voice_count
         )
 
-        print(
-            f"[{index + 1}/"
-            f"{len(chunks)}] "
-            f"{effective_length(chunk)} effective chars "
-            f"({len(chunk)} raw)"
-        )
-
-        print(chunk)
-        print()
-
-        generate_kwargs = {
-            "temperature": temperature,
-            "top_p": top_p,
-            "top_k": int(top_k),
-            "repetition_penalty": repetition_penalty,
-            "norm_loudness": norm_loudness,
+        all_voice_configs = {
+            1: build_voice_config(
+                voice_1_audio,
+                voice_1_temperature,
+                voice_1_top_p,
+                voice_1_top_k,
+                voice_1_repetition_penalty,
+                voice_1_norm_loudness
+            ),
+            2: build_voice_config(
+                voice_2_audio,
+                voice_2_temperature,
+                voice_2_top_p,
+                voice_2_top_k,
+                voice_2_repetition_penalty,
+                voice_2_norm_loudness
+            ),
+            3: build_voice_config(
+                voice_3_audio,
+                voice_3_temperature,
+                voice_3_top_p,
+                voice_3_top_k,
+                voice_3_repetition_penalty,
+                voice_3_norm_loudness
+            ),
+            4: build_voice_config(
+                voice_4_audio,
+                voice_4_temperature,
+                voice_4_top_p,
+                voice_4_top_k,
+                voice_4_repetition_penalty,
+                voice_4_norm_loudness
+            ),
         }
 
-        if (
-            audio_prompt_path
-            and index == 0
-        ):
-            generate_kwargs[
-                "audio_prompt_path"
-            ] = audio_prompt_path
+        voice_configs = {
+            voice_id: all_voice_configs[
+                voice_id
+            ]
+            for voice_id in range(
+                1,
+                voice_count + 1
+            )
+        }
 
-        wav = MODEL.generate(
-            chunk,
-            **generate_kwargs
-        )
-        audio = (
-            wav
-            .squeeze()
-            .detach()
-            .cpu()
-            .numpy()
-            .astype(np.float32)
-        )
+        missing_voices = [
+            str(voice_id)
+            for voice_id, config
+            in voice_configs.items()
+            if not config["audio_path"]
+        ]
 
-        generated_parts.append(
-            audio
-        )
-
-        if index < len(chunks) - 1:
-            if paragraph_breaks_after > 0:
-                for _ in range(paragraph_breaks_after):
-                    generated_parts.append(
-                        paragraph_silence
-                    )
-            else:
-                generated_parts.append(
-                    sentence_silence
+        if missing_voices:
+            raise gr.Error(
+                "Podcast mode requires a reference sample "
+                "for every configured voice. Missing: Voice "
+                + ", Voice ".join(
+                    missing_voices
                 )
+            )
+
+        chunks = split_podcast_text(
+            text,
+            max_chars=chunk_size,
+            voice_count=voice_count
+        )
+
+        if not chunks:
+            raise gr.Error(
+                "No text chunks were created."
+            )
+
+        voice_conditionals = {}
+
+        print()
+        print(
+            f"Preparing {voice_count} Podcast voice(s)..."
+        )
+        print()
+
+        for voice_id in range(
+            1,
+            voice_count + 1
+        ):
+            config = voice_configs[
+                voice_id
+            ]
+
+            progress(
+                (
+                    voice_id
+                    / voice_count
+                ) * 0.15,
+                desc=(
+                    f"Preparing Voice "
+                    f"{voice_id} of "
+                    f"{voice_count}"
+                )
+            )
+
+            MODEL.prepare_conditionals(
+                config["audio_path"],
+                norm_loudness=(
+                    config[
+                        "norm_loudness"
+                    ]
+                )
+            )
+
+            # prepare_conditionals() replaces MODEL.conds
+            # with a new Conditionals object, so retaining
+            # this reference safely caches this voice.
+            voice_conditionals[
+                voice_id
+            ] = MODEL.conds
+
+        print()
+        print(
+            f"Generating {len(chunks)} Podcast chunks..."
+        )
+        print()
+
+        for index, (
+            chunk,
+            paragraph_breaks_after,
+            voice_id
+        ) in enumerate(chunks):
+
+            progress(
+                0.15
+                + (
+                    (index + 1)
+                    / len(chunks)
+                ) * 0.85,
+                desc=(
+                    f"Generating section "
+                    f"{index + 1} "
+                    f"of {len(chunks)} "
+                    f"(Voice {voice_id})"
+                )
+            )
+
+            print(
+                f"[{index + 1}/"
+                f"{len(chunks)}] "
+                f"Voice {voice_id} | "
+                f"{effective_length(chunk)} "
+                f"effective chars "
+                f"({len(chunk)} raw)"
+            )
+
+            print(chunk)
+            print()
+
+            config = voice_configs[
+                voice_id
+            ]
+
+            MODEL.conds = (
+                voice_conditionals[
+                    voice_id
+                ]
+            )
+
+            wav = MODEL.generate(
+                chunk,
+                temperature=(
+                    config[
+                        "temperature"
+                    ]
+                ),
+                top_p=(
+                    config[
+                        "top_p"
+                    ]
+                ),
+                top_k=(
+                    config[
+                        "top_k"
+                    ]
+                ),
+                repetition_penalty=(
+                    config[
+                        "repetition_penalty"
+                    ]
+                )
+            )
+
+            audio = (
+                wav
+                .squeeze()
+                .detach()
+                .cpu()
+                .numpy()
+                .astype(np.float32)
+            )
+
+            generated_parts.append(
+                audio
+            )
+
+            if index < len(chunks) - 1:
+                if paragraph_breaks_after > 0:
+                    for _ in range(
+                        paragraph_breaks_after
+                    ):
+                        generated_parts.append(
+                            paragraph_silence
+                        )
+                else:
+                    generated_parts.append(
+                        sentence_silence
+                    )
+
+        output_file = (
+            "longform-turbo-podcast-output.wav"
+        )
+
+        mode_status = (
+            f"Podcast | {voice_count} voices"
+        )
+
+        chunk_preview_text = ""
+
+        for index, (
+            chunk,
+            paragraph_breaks_after,
+            voice_id
+        ) in enumerate(
+            chunks,
+            start=1
+        ):
+            chunk_preview_text += (
+                f"--- CHUNK {index} | "
+                f"VOICE {voice_id} ---\n"
+                f"{chunk}\n"
+            )
+
+            if paragraph_breaks_after > 0:
+                chunk_preview_text += (
+                    f"[PARAGRAPH BREAK x"
+                    f"{paragraph_breaks_after}]\n"
+                )
+
+            chunk_preview_text += "\n"
+
+    else:
+        if not audio_prompt_path:
+            raise gr.Error(
+                "Chatterbox Turbo requires a reference voice. "
+                "Please upload or record a reference clip."
+            )
+
+        chunks = split_text(
+            text,
+            max_chars=chunk_size
+        )
+
+        if not chunks:
+            raise gr.Error(
+                "No text chunks were created."
+            )
+
+        print()
+        print(
+            f"Generating {len(chunks)} chunks..."
+        )
+        print()
+
+        for index, (
+            chunk,
+            paragraph_breaks_after
+        ) in enumerate(chunks):
+
+            progress(
+                (index + 1) / len(chunks),
+                desc=(
+                    f"Generating section "
+                    f"{index + 1} "
+                    f"of {len(chunks)}"
+                )
+            )
+
+            print(
+                f"[{index + 1}/"
+                f"{len(chunks)}] "
+                f"{effective_length(chunk)} "
+                f"effective chars "
+                f"({len(chunk)} raw)"
+            )
+
+            print(chunk)
+            print()
+
+            generate_kwargs = {
+                "temperature": temperature,
+                "top_p": top_p,
+                "top_k": int(top_k),
+                "repetition_penalty": (
+                    repetition_penalty
+                ),
+                "norm_loudness": norm_loudness,
+            }
+
+            if (
+                audio_prompt_path
+                and index == 0
+            ):
+                generate_kwargs[
+                    "audio_prompt_path"
+                ] = audio_prompt_path
+
+            wav = MODEL.generate(
+                chunk,
+                **generate_kwargs
+            )
+
+            audio = (
+                wav
+                .squeeze()
+                .detach()
+                .cpu()
+                .numpy()
+                .astype(np.float32)
+            )
+
+            generated_parts.append(
+                audio
+            )
+
+            if index < len(chunks) - 1:
+                if paragraph_breaks_after > 0:
+                    for _ in range(
+                        paragraph_breaks_after
+                    ):
+                        generated_parts.append(
+                            paragraph_silence
+                        )
+                else:
+                    generated_parts.append(
+                        sentence_silence
+                    )
+
+        output_file = (
+            "longform-turbo-output.wav"
+        )
+
+        mode_status = "Turbo"
+
+        chunk_preview_text = ""
+
+        for index, (
+            chunk,
+            paragraph_breaks_after
+        ) in enumerate(
+            chunks,
+            start=1
+        ):
+            chunk_preview_text += (
+                f"--- CHUNK {index} ---\n"
+                f"{chunk}\n"
+            )
+
+            if paragraph_breaks_after > 0:
+                chunk_preview_text += (
+                    f"[PARAGRAPH BREAK x"
+                    f"{paragraph_breaks_after}]\n"
+                )
+
+            chunk_preview_text += "\n"
 
     complete_audio = np.concatenate(
         generated_parts
-    )
-
-    output_file = (
-        "longform-turbo-output.wav"
     )
 
     sf.write(
@@ -1081,29 +1781,8 @@ def generate_longform(
         f"Finished: {len(chunks)} chunks | "
         f"{duration / 60:.1f} minutes | "
         f"{len(text):,} characters | "
-        f"Turbo"
+        f"{mode_status}"
     )
-
-    chunk_preview_text = ""
-
-    for index, (
-        chunk,
-        paragraph_breaks_after
-    ) in enumerate(
-        chunks,
-        start=1
-    ):
-        chunk_preview_text += (
-            f"--- CHUNK {index} ---\n"
-            f"{chunk}\n"
-        )
-
-        if paragraph_breaks_after > 0:
-            chunk_preview_text += (
-                f"[PARAGRAPH BREAK x{paragraph_breaks_after}]\n"
-            )
-
-        chunk_preview_text += "\n"
 
     return (
         output_file,
@@ -1130,10 +1809,119 @@ def show_reference_audio_path(audio_path):
 
     return "No reference audio selected"
 
+
+EDITOR_READY_JS = """
+(ready) => {
+    setNarrationEditorEnabled(
+        Boolean(ready)
+    );
+}
+"""
+
+
+def update_podcast_workflow(
+    podcast_mode,
+    voice_count,
+    voice_1_audio,
+    voice_2_audio,
+    voice_3_audio,
+    voice_4_audio
+):
+    if not podcast_mode:
+        return (
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=True),
+            gr.update(visible=True),
+            gr.update(visible=True),
+            gr.update(visible=True),
+            True,
+            gr.update(
+                visible=False,
+                value=""
+            ),
+            gr.update(
+                interactive=True
+            )
+        )
+
+    count = (
+        int(voice_count)
+        if voice_count
+        else 0
+    )
+
+    samples = [
+        voice_1_audio,
+        voice_2_audio,
+        voice_3_audio,
+        voice_4_audio
+    ]
+
+    missing = [
+        index + 1
+        for index in range(count)
+        if not samples[index]
+    ]
+
+    ready = (
+        count > 0
+        and not missing
+    )
+
+    if count == 0:
+        message = (
+            "**Podcast mode:** select the number "
+            "of voices (1–4). The narration editor "
+            "is locked until voice setup is complete."
+        )
+    elif missing:
+        missing_text = ", ".join(
+            f"Voice {voice_id}"
+            for voice_id in missing
+        )
+
+        message = (
+            f"**Podcast mode:** upload a reference "
+            f"sample for {missing_text}. The narration "
+            "editor remains locked."
+        )
+    else:
+        message = (
+            f"**Podcast mode ready:** {count} voice(s) "
+            "configured. Prefix a paragraph with "
+            "`{1}`, `{2}`, `{3}`, or `{4}` to select "
+            "its voice. Untagged paragraphs use Voice 1."
+        )
+
+    return (
+        gr.update(visible=True),
+        gr.update(visible=count >= 1),
+        gr.update(visible=count >= 2),
+        gr.update(visible=count >= 3),
+        gr.update(visible=count >= 4),
+        gr.update(visible=False),
+        gr.update(visible=False),
+        gr.update(visible=False),
+        gr.update(visible=False),
+        ready,
+        gr.update(
+            visible=True,
+            value=message
+        ),
+        gr.update(
+            interactive=ready
+        )
+    )
+
+
 with gr.Blocks(
     title=(
         "Chatterbox Turbo "
-        "Long-Form Narrator"
+        "Long-Form Narrator v5.0"
     )
 ) as demo:
 
@@ -1141,11 +1929,11 @@ with gr.Blocks(
         """
 <div class="app-panel app-header">
     <div class="app-title">
-        Chatterbox Turbo — Long-Form Narrator
+        Chatterbox Turbo — Long-Form Narrator v5.0
     </div>
 
     <div class="app-subtitle">
-        Long-form voice cloning and narration using Chatterbox Turbo.
+        Long-form voice cloning, narration, and multi-voice Podcast generation using Chatterbox Turbo.
     </div>
 
     <div class="app-instructions">
@@ -1159,6 +1947,10 @@ with gr.Blocks(
         tag counts as <strong>1 character</strong> toward the chunk limit.
         The script is split into short sections automatically and combined
         into a single WAV file.
+        <br><br>
+        <strong>Podcast mode:</strong> configure 1–4 reference voices, then
+        prefix each paragraph with <strong>{1}</strong> to
+        <strong>{4}</strong>. Paragraphs without a voice prefix use Voice 1.
         <br><br>
         <strong>Reference voice required:</strong> upload or record a clean
         voice clip longer than 5 seconds.
@@ -1184,6 +1976,356 @@ with gr.Blocks(
 </div>
 """
                 )
+
+                with gr.Row(
+                    elem_classes=[
+                        "podcast-controls"
+                    ]
+                ):
+                    podcast_mode = gr.Checkbox(
+                        value=False,
+                        label="Podcast mode",
+                        elem_id=(
+                            "podcast-mode-switch"
+                        ),
+                        interactive=True
+                    )
+
+                    with gr.Group(
+                        visible=False
+                    ) as voice_count_group:
+                        voice_count = gr.Dropdown(
+                            choices=[
+                                1,
+                                2,
+                                3,
+                                4
+                            ],
+                            value=None,
+                            label="Voices",
+                            interactive=True
+                        )
+
+                podcast_status = gr.Markdown(
+                    value="",
+                    visible=False,
+                    elem_classes=[
+                        "podcast-status"
+                    ]
+                )
+
+                editor_ready_state = gr.Checkbox(
+                    value=True,
+                    visible=False
+                )
+
+                with gr.Group(
+                    visible=False,
+                    elem_classes=[
+                        "voice-panel"
+                    ]
+                ) as voice_1_panel:
+                    gr.HTML(
+                        """
+<div class="voice-panel-title">
+    Voice 1
+</div>
+"""
+                    )
+
+                    voice_1_audio = gr.Audio(
+                        sources=[
+                            "upload",
+                            "microphone"
+                        ],
+                        type="filepath",
+                        label=(
+                            "Voice 1 reference sample "
+                            "(required)"
+                        )
+                    )
+
+                    with gr.Accordion(
+                        "Voice 1 parameters",
+                        open=False
+                    ):
+                        voice_1_temperature = gr.Slider(
+                            minimum=0.05,
+                            maximum=2.0,
+                            value=0.8,
+                            step=0.05,
+                            label="Temperature",
+                            interactive=True
+                        )
+
+                        voice_1_top_p = gr.Slider(
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.95,
+                            step=0.01,
+                            label="Top P",
+                            interactive=True
+                        )
+
+                        voice_1_top_k = gr.Slider(
+                            minimum=0,
+                            maximum=1000,
+                            value=1000,
+                            step=10,
+                            label="Top K",
+                            interactive=True
+                        )
+
+                        voice_1_repetition_penalty = gr.Slider(
+                            minimum=1.0,
+                            maximum=2.0,
+                            value=1.2,
+                            step=0.05,
+                            label=(
+                                "Repetition Penalty"
+                            ),
+                            interactive=True
+                        )
+
+                        voice_1_norm_loudness = gr.Checkbox(
+                            value=True,
+                            label=(
+                                "Normalize reference "
+                                "loudness (-27 LUFS)"
+                            ),
+                            interactive=True
+                        )
+
+                with gr.Group(
+                    visible=False,
+                    elem_classes=[
+                        "voice-panel"
+                    ]
+                ) as voice_2_panel:
+                    gr.HTML(
+                        """
+<div class="voice-panel-title">
+    Voice 2
+</div>
+"""
+                    )
+
+                    voice_2_audio = gr.Audio(
+                        sources=[
+                            "upload",
+                            "microphone"
+                        ],
+                        type="filepath",
+                        label=(
+                            "Voice 2 reference sample "
+                            "(required)"
+                        )
+                    )
+
+                    with gr.Accordion(
+                        "Voice 2 parameters",
+                        open=False
+                    ):
+                        voice_2_temperature = gr.Slider(
+                            minimum=0.05,
+                            maximum=2.0,
+                            value=0.8,
+                            step=0.05,
+                            label="Temperature",
+                            interactive=True
+                        )
+
+                        voice_2_top_p = gr.Slider(
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.95,
+                            step=0.01,
+                            label="Top P",
+                            interactive=True
+                        )
+
+                        voice_2_top_k = gr.Slider(
+                            minimum=0,
+                            maximum=1000,
+                            value=1000,
+                            step=10,
+                            label="Top K",
+                            interactive=True
+                        )
+
+                        voice_2_repetition_penalty = gr.Slider(
+                            minimum=1.0,
+                            maximum=2.0,
+                            value=1.2,
+                            step=0.05,
+                            label=(
+                                "Repetition Penalty"
+                            ),
+                            interactive=True
+                        )
+
+                        voice_2_norm_loudness = gr.Checkbox(
+                            value=True,
+                            label=(
+                                "Normalize reference "
+                                "loudness (-27 LUFS)"
+                            ),
+                            interactive=True
+                        )
+
+                with gr.Group(
+                    visible=False,
+                    elem_classes=[
+                        "voice-panel"
+                    ]
+                ) as voice_3_panel:
+                    gr.HTML(
+                        """
+<div class="voice-panel-title">
+    Voice 3
+</div>
+"""
+                    )
+
+                    voice_3_audio = gr.Audio(
+                        sources=[
+                            "upload",
+                            "microphone"
+                        ],
+                        type="filepath",
+                        label=(
+                            "Voice 3 reference sample "
+                            "(required)"
+                        )
+                    )
+
+                    with gr.Accordion(
+                        "Voice 3 parameters",
+                        open=False
+                    ):
+                        voice_3_temperature = gr.Slider(
+                            minimum=0.05,
+                            maximum=2.0,
+                            value=0.8,
+                            step=0.05,
+                            label="Temperature",
+                            interactive=True
+                        )
+
+                        voice_3_top_p = gr.Slider(
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.95,
+                            step=0.01,
+                            label="Top P",
+                            interactive=True
+                        )
+
+                        voice_3_top_k = gr.Slider(
+                            minimum=0,
+                            maximum=1000,
+                            value=1000,
+                            step=10,
+                            label="Top K",
+                            interactive=True
+                        )
+
+                        voice_3_repetition_penalty = gr.Slider(
+                            minimum=1.0,
+                            maximum=2.0,
+                            value=1.2,
+                            step=0.05,
+                            label=(
+                                "Repetition Penalty"
+                            ),
+                            interactive=True
+                        )
+
+                        voice_3_norm_loudness = gr.Checkbox(
+                            value=True,
+                            label=(
+                                "Normalize reference "
+                                "loudness (-27 LUFS)"
+                            ),
+                            interactive=True
+                        )
+
+                with gr.Group(
+                    visible=False,
+                    elem_classes=[
+                        "voice-panel"
+                    ]
+                ) as voice_4_panel:
+                    gr.HTML(
+                        """
+<div class="voice-panel-title">
+    Voice 4
+</div>
+"""
+                    )
+
+                    voice_4_audio = gr.Audio(
+                        sources=[
+                            "upload",
+                            "microphone"
+                        ],
+                        type="filepath",
+                        label=(
+                            "Voice 4 reference sample "
+                            "(required)"
+                        )
+                    )
+
+                    with gr.Accordion(
+                        "Voice 4 parameters",
+                        open=False
+                    ):
+                        voice_4_temperature = gr.Slider(
+                            minimum=0.05,
+                            maximum=2.0,
+                            value=0.8,
+                            step=0.05,
+                            label="Temperature",
+                            interactive=True
+                        )
+
+                        voice_4_top_p = gr.Slider(
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.95,
+                            step=0.01,
+                            label="Top P",
+                            interactive=True
+                        )
+
+                        voice_4_top_k = gr.Slider(
+                            minimum=0,
+                            maximum=1000,
+                            value=1000,
+                            step=10,
+                            label="Top K",
+                            interactive=True
+                        )
+
+                        voice_4_repetition_penalty = gr.Slider(
+                            minimum=1.0,
+                            maximum=2.0,
+                            value=1.2,
+                            step=0.05,
+                            label=(
+                                "Repetition Penalty"
+                            ),
+                            interactive=True
+                        )
+
+                        voice_4_norm_loudness = gr.Checkbox(
+                            value=True,
+                            label=(
+                                "Normalize reference "
+                                "loudness (-27 LUFS)"
+                            ),
+                            interactive=True
+                        )
 
                 gr.HTML(
                     """
@@ -1240,29 +2382,32 @@ with gr.Blocks(
                             js=INSERT_EVENT_TAG_JS
                         )
 
-            reference_audio = gr.Audio(
-                sources=[
-                    "upload",
-                    "microphone"
-                ],
-                type="filepath",
-                label=(
-                    "Reference voice "
-                    "(required for Turbo)"
+            with gr.Group(
+                visible=True
+            ) as single_reference_panel:
+                reference_audio = gr.Audio(
+                    sources=[
+                        "upload",
+                        "microphone"
+                    ],
+                    type="filepath",
+                    label=(
+                        "Reference voice "
+                        "(required for Turbo)"
+                    )
                 )
-            )
 
-            reference_audio_path_display = gr.Textbox(
-                label="Reference audio file location",
-                value="No reference audio selected",
-                interactive=False
-            )
+                reference_audio_path_display = gr.Textbox(
+                    label="Reference audio file location",
+                    value="No reference audio selected",
+                    interactive=False
+                )
 
-            reference_audio.change(
-                fn=show_reference_audio_path,
-                inputs=reference_audio,
-                outputs=reference_audio_path_display
-            )
+                reference_audio.change(
+                    fn=show_reference_audio_path,
+                    inputs=reference_audio,
+                    outputs=reference_audio_path_display
+                )
 
             generate_button = gr.Button(
                 "Generate Long-Form Narration",
@@ -1280,51 +2425,54 @@ with gr.Blocks(
                 interactive=False
             )
 
-            with gr.Accordion(
-                "Turbo Voice Settings",
-                open=True
-            ):
-                temperature = gr.Slider(
-                    minimum=0.05,
-                    maximum=2.0,
-                    value=0.8,
-                    step=0.05,
-                    label="Temperature",
-                    interactive=True
-                )
+            with gr.Group(
+                visible=True
+            ) as single_voice_settings_panel:
+                with gr.Accordion(
+                    "Turbo Voice Settings",
+                    open=True
+                ):
+                    temperature = gr.Slider(
+                        minimum=0.05,
+                        maximum=2.0,
+                        value=0.8,
+                        step=0.05,
+                        label="Temperature",
+                        interactive=True
+                    )
 
-                top_p = gr.Slider(
-                    minimum=0.0,
-                    maximum=1.0,
-                    value=0.95,
-                    step=0.01,
-                    label="Top P",
-                    interactive=True
-                )
+                    top_p = gr.Slider(
+                        minimum=0.0,
+                        maximum=1.0,
+                        value=0.95,
+                        step=0.01,
+                        label="Top P",
+                        interactive=True
+                    )
 
-                top_k = gr.Slider(
-                    minimum=0,
-                    maximum=1000,
-                    value=1000,
-                    step=10,
-                    label="Top K",
-                    interactive=True
-                )
+                    top_k = gr.Slider(
+                        minimum=0,
+                        maximum=1000,
+                        value=1000,
+                        step=10,
+                        label="Top K",
+                        interactive=True
+                    )
 
-                repetition_penalty = gr.Slider(
-                    minimum=1.0,
-                    maximum=2.0,
-                    value=1.2,
-                    step=0.05,
-                    label="Repetition Penalty",
-                    interactive=True
-                )
+                    repetition_penalty = gr.Slider(
+                        minimum=1.0,
+                        maximum=2.0,
+                        value=1.2,
+                        step=0.05,
+                        label="Repetition Penalty",
+                        interactive=True
+                    )
 
-                norm_loudness = gr.Checkbox(
-                    value=True,
-                    label="Normalize reference loudness (-27 LUFS)",
-                    interactive=True
-                )
+                    norm_loudness = gr.Checkbox(
+                        value=True,
+                        label="Normalize reference loudness (-27 LUFS)",
+                        interactive=True
+                    )
 
             with gr.Accordion(
                 "Long-Form Settings",
@@ -1397,10 +2545,59 @@ with gr.Blocks(
             label="Generated chunks"
         )
 
+    workflow_inputs = [
+        podcast_mode,
+        voice_count,
+        voice_1_audio,
+        voice_2_audio,
+        voice_3_audio,
+        voice_4_audio
+    ]
+
+    workflow_outputs = [
+        voice_count_group,
+        voice_1_panel,
+        voice_2_panel,
+        voice_3_panel,
+        voice_4_panel,
+        single_reference_panel,
+        reference_audio,
+        reference_audio_path_display,
+        single_voice_settings_panel,
+        editor_ready_state,
+        podcast_status,
+        generate_button
+    ]
+
+    for workflow_component in [
+        podcast_mode,
+        voice_count,
+        voice_1_audio,
+        voice_2_audio,
+        voice_3_audio,
+        voice_4_audio
+    ]:
+        workflow_component.change(
+            fn=update_podcast_workflow,
+            inputs=workflow_inputs,
+            outputs=workflow_outputs
+        )
+
+    editor_ready_state.change(
+        fn=None,
+        inputs=[
+            editor_ready_state
+        ],
+        outputs=[],
+        js=EDITOR_READY_JS
+    )
+
     generate_button.click(
         fn=generate_longform,
         inputs=[
             text,
+            podcast_mode,
+            voice_count,
             reference_audio,
             sentence_pause_ms,
             paragraph_pause_ms,
@@ -1410,7 +2607,31 @@ with gr.Blocks(
             top_k,
             repetition_penalty,
             norm_loudness,
-            seed_num
+            seed_num,
+            voice_1_audio,
+            voice_1_temperature,
+            voice_1_top_p,
+            voice_1_top_k,
+            voice_1_repetition_penalty,
+            voice_1_norm_loudness,
+            voice_2_audio,
+            voice_2_temperature,
+            voice_2_top_p,
+            voice_2_top_k,
+            voice_2_repetition_penalty,
+            voice_2_norm_loudness,
+            voice_3_audio,
+            voice_3_temperature,
+            voice_3_top_p,
+            voice_3_top_k,
+            voice_3_repetition_penalty,
+            voice_3_norm_loudness,
+            voice_4_audio,
+            voice_4_temperature,
+            voice_4_top_p,
+            voice_4_top_k,
+            voice_4_repetition_penalty,
+            voice_4_norm_loudness
         ],
         outputs=[
             output_audio,
@@ -1429,7 +2650,7 @@ if __name__ == "__main__":
     print()
     print(
         "Starting Chatterbox Turbo "
-        "Long-Form GUI..."
+        "Long-Form GUI v5.0..."
     )
     print()
 
